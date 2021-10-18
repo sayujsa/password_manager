@@ -2,6 +2,8 @@ from tkinter import *
 from tkinter import messagebox
 import random
 import pyperclip
+import json
+
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
@@ -26,6 +28,25 @@ def generate_password():
     password_input.insert(0, password)
     pyperclip.copy(password)
 
+# ---------------------------- RETRIEVE INFO ------------------------------- #
+
+
+def search_in_json():
+    with open("data.json", 'r') as data_file:
+        try:
+            data = json.load(data_file)
+        except json.decoder.JSONDecodeError:
+            data = {}
+        if website_input.get().title() in data.keys():
+            messagebox.showinfo(title=website_input.get().title(),
+                                message=f"Email : {data[website_input.get().title()]['email']}\n"
+                                f"Password : {data[website_input.get().title()]['password']}")
+            pyperclip.copy(data[website_input.get().title()]['password'])
+        elif len(website_input.get()) == 0:
+            messagebox.showinfo(message="Please enter a website to search")
+        else:
+            messagebox.showinfo(message="No such website exists in the database")
+
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 
 
@@ -33,16 +54,26 @@ def add_to_file():
     if website_input.get() == "" or email_input.get() == "" or password_input.get() == "":
         messagebox.showerror(message="Please complete all the fields")
     else:
-        if messagebox.askokcancel(title="Confirm info",
-                                  message=f"Website : {website_input.get()}\nEmail/Username : {email_input.get()}"
-                                          f"\nPassword : {password_input.get()}"):
-            with open("data.txt", "a") as data_file:
-                data_file.write(f"{website_input.get()}   |   {email_input.get()}   |   {password_input.get()}\n")
-            website_input.delete(0, END)
-            email_input.delete(0, END)
-            password_input.delete(0, END)
-            website_input.focus()
-            messagebox.showinfo(message="Info successfully added")
+        new_data = {
+            website_input.get().title(): {
+                "email": email_input.get(),
+                "password": password_input.get()
+            }
+        }
+        with open("data.json", "r") as data_file:
+            try:
+                data = json.load(data_file)
+            except json.decoder.JSONDecodeError:
+                data = new_data
+            else:
+                data.update(new_data)
+        with open("data.json", "w") as data_file:
+            json.dump(data, data_file)
+        website_input.delete(0, END)
+        email_input.delete(0, END)
+        password_input.delete(0, END)
+        website_input.focus()
+        messagebox.showinfo(message="Info successfully added")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -59,9 +90,12 @@ canvas.grid(column=0, row=0, sticky='e', columnspan=2, padx=20, pady=20)
 website_label = Label(text="website", font=("Courier", 20))
 website_label.grid(column=0, row=1, sticky='w')
 
-website_input = Entry(width=43)
-website_input.grid(column=1, row=1, padx=10, columnspan=2, sticky='w')
+website_input = Entry(width=21)
+website_input.grid(column=1, row=1, padx=10, sticky='w')
 website_input.focus()
+
+search_button = Button(text="Search", width=16, command=search_in_json)
+search_button.grid(column=2, row=1, sticky='w')
 
 email_label = Label(text="Email/Username", font=("Courier", 20))
 email_label.grid(column=0, row=2)
@@ -80,6 +114,5 @@ password_button.grid(column=2, row=3, sticky='w')
 
 add_button = Button(text="Add", width=70, command=add_to_file)
 add_button.grid(column=0, row=4, columnspan=3, sticky='w')
-
 
 window.mainloop()
